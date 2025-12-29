@@ -108,18 +108,7 @@ python parameter_gradient_experiment.py
 
 Experimental results (CSV files and plots) are saved to the `result/` directory.
 
-## Citation
 
-If you use PGF in your research, please cite:
-
-```bibtex
-@article{pgf2026,
-  title={Breaking the Memory Wall: Exact Analytical Differentiation via Tiled Operator-Space Evolution},
-  author={Anonymous},
-  journal={ICML},
-  year={2026}
-}
-```
 
 ## Requirements
 
@@ -143,4 +132,5 @@ MIT License - see LICENSE file for details.
 This work enables chromosome-scale sensitivity analysis on single-GPU workstations, bridging the gap between theoretical infinite-context models and practical hardware limitations.
 
 ---
+
 
