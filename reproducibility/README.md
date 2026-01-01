@@ -1,6 +1,6 @@
 # Phase Gradient Flow (PGF): Reproducibility Suite
 
-This directory contains the core implementation of Phase Gradient Flow (PGF) and the experimental scripts used to generate the results presented in the ICML 2026 submission: "Breaking the Memory Wall: Exact Analytical Differentiation via Tiled Operator-Space Evolution".
+This directory contains the core implementation of Phase Gradient Flow (PGF) and the experimental scripts used to generate the results presented in the arxiv submission: "Breaking the Memory Wall: Exact Analytical Differentiation via Tiled Operator-Space Evolution".
 
 ## Prerequisites
 
@@ -40,4 +40,5 @@ python bench_performance.py
 
 ## Hardware Note
 Benchmarks were executed on NVIDIA RTX 5090 and RTX 5060 Laptop GPUs. Metrics may vary based on hardware specifications and CUDA versions.
+
 
