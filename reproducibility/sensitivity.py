@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import gc
 import os
 import psutil
+from torch.func import jvp
 from pgf_mamba import FrechetMambaOperator
 
 # Ensure result directory exists
@@ -45,7 +46,8 @@ def visualize_sensitivity_invariance():
     block_size = 128
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    acb_stats = {L: {"norms": None} for L in L_list}
+    acb_stats = {L: {"norms": None, "autograd_norms": None} for L in L_list}
+    autograd_active = True
     
     # --- 2. Model Initialization ---
     model = FrechetMambaOperator(d_model=D, d_state=16).to(device)
@@ -66,6 +68,31 @@ def visualize_sensitivity_invariance():
 
         model.pgf_forward(u, du, block_size=block_size, streaming=True, callback=callback)
         acb_stats[L]["norms"] = np.array(dy_norms)
+
+        # Autograd reference only attempted on the smallest L (where it is feasible)
+        if autograd_active and torch.cuda.is_available():
+            try:
+                torch.cuda.reset_peak_memory_stats()
+                u_ref = u.detach().clone().requires_grad_(True)
+                du_ref = du.detach().clone()
+
+                def forward_fn(inp):
+                    return model.forward(inp)
+
+                _, dy_ag = jvp(forward_fn, (u_ref,), (du_ref,))
+                acb_stats[L]["autograd_norms"] = torch.norm(dy_ag, dim=-1).detach().cpu().numpy()
+
+                total_mem = torch.cuda.get_device_properties(device).total_memory
+                peak_mem = torch.cuda.max_memory_allocated()
+                if peak_mem / total_mem > 0.8:
+                    raise RuntimeError(f"Autograd peak memory {peak_mem/1e9:.2f}GB exceeds 80% of device")
+
+                print(f"[Autograd] Reference computed at L={L}")
+            except RuntimeError as err:
+                print(f"[Autograd] Failed at L={L}: {err}")
+                autograd_active = False
+                torch.cuda.empty_cache()
+
         print(f"Processed L={L}")
 
     # --- 4. Plotting (ICML Standard) ---
@@ -77,9 +104,10 @@ def visualize_sensitivity_invariance():
     
     # Plot Autograd Reference (smallest L)
     L_ref = L_list[0]
-    x_ref = np.linspace(0, 1, L_ref)
-    ax.plot(x_ref, acb_stats[L_ref]["norms"], color=ag_red, linestyle='--', 
-            linewidth=2.0, alpha=0.6, label=f"Autograd Ref ($L={L_ref//1000}$k)")
+    if acb_stats[L_ref]["autograd_norms"] is not None:
+        x_ref = np.linspace(0, 1, L_ref)
+        ax.plot(x_ref, acb_stats[L_ref]["autograd_norms"], color=ag_red, linestyle='--',
+                linewidth=2.0, alpha=0.6, label=f"Autograd Ref ($L={L_ref//1000}$k)")
 
     # Plot PGF lines
     for i, L in enumerate(L_list):

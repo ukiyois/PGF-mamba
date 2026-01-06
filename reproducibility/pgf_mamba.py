@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.func import jvp, vmap
+from torch.func import jvp
 
 # --- Discretization Operator ---
 def mamba_discretization(z):
@@ -162,3 +162,6 @@ class FrechetMambaOperator(nn.Module):
         y_final = F.softplus(y_raw) * torch.clamp(params['scale'], min=0.5)
         return y_final, h_curr
 
+        
+
+       
