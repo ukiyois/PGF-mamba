@@ -1,136 +1,49 @@
-# Phase Gradient Flow (PGF): Breaking the Memory Wall in Long-Sequence Gradient Computation
+# Phase Gradient Flow (PGF): Reproducibility Suite
 
-Phase Gradient Flow (PGF) is a novel framework that computes exact analytical derivatives for long-sequence models with O(1) memory complexity relative to sequence length, achieving a 94% reduction in peak VRAM and a 23x increase in throughput compared to standard Autograd.
+This directory contains the core implementation of Phase Gradient Flow (PGF) and the experimental scripts used to generate the results presented in the ICML 2026 submission: "Breaking the Memory Wall: Exact Analytical Differentiation via Tiled Operator-Space Evolution".
 
-## Key Features
-
-- O(1) Memory Complexity: Constant memory footprint regardless of sequence length
-- Exact Gradients: Mathematically equivalent to standard backpropagation, no approximations
-- Numerical Stability: Robust to extreme sequence lengths (tested up to L=128,000)
-- Hardware Efficient: Enables chromosome-scale sensitivity analysis on consumer GPUs
-
-## Quick Start
-
-### Installation
-
-```bash
-pip install -r reproducibility/requirements.txt
-```
-
-### Core Implementation
-
-#### Mamba/SSM Gradient Computation
-
-```python
-from reproducibility.pgf_mamba import FrechetMambaOperator
-
-# Initialize PGF operator
-model = FrechetMambaOperator(d_model=128, d_state=16)
-
-# Forward pass with O(1) memory
-u_seq = torch.randn(L, d_model)  # Input sequence
-du_seq = torch.randn(L, d_model)  # Tangent vector
-
-y_seq, dy_seq = model.pgf_forward(u_seq, du_seq, block_size=64)
-```
-
-## Performance Benchmarks
-
-| Sequence Length | Standard Autograd | PGF | Speedup | Memory Reduction |
-|----------------|------------------|-----|---------|------------------|
-| L = 1,000      | 63ms, 3.3GB      | 12s, 18MB | - | 94% ↓ |
-| L = 6,000      | 63ms, 3.3GB      | 12s, 18MB | - | 94% ↓ |
-| L = 100,000    | OOM              | 18MB      | ∞ | 100% ↓ |
-
-*Benchmarks on NVIDIA RTX 5090/5060 GPUs*
-
-## Theoretical Foundation
-
-PGF is based on **Tiled Operator-Space Evolution (TOSE)**, which reframes differentiation as a synchronized dynamical system that evolves alongside the primal state. The **Tangent-Flow Isomorphism** establishes that the Fréchet derivative of a linear recurrence is itself a dynamical system isomorphic to the original.
-
-### Key Innovation: Operator-Space Collapse
-
-Instead of materializing the computational graph, PGF operates directly in the **state-space manifold**, collapsing the graph into a sequence of constant-time state handoffs:
-
-```
-Traditional: O(L) memory for hidden states
-PGF: O(1) memory via operator-space evolution
-```
-
-## Repository Structure
-
-```
-reproducibility/
-├── pgf_mamba.py                    # Core TOSE algorithm implementation
-├── bench_performance.py            # Hardware efficiency benchmarking (Figure 3)
-├── bench_scaling.py                # Scalability stress test (Figure 1)
-├── sensitivity.py                  # Ghost pulse detection (Figure 4)
-├── stiffness_experiment.py         # Stability analysis (Figure 2, Appendix A.1)
-├── precision_robustness_experiment.py  # Mixed precision analysis (Appendix A.2)
-├── complexity_collapse_experiment.py   # Complexity verification (Appendix A.3)
-├── parameter_gradient_experiment.py    # VRAM scaling analysis (Appendix A.4)
-├── requirements.txt                # Python dependencies
-└── README.md                       # Detailed experimental setup guide
-```
-
-## Documentation
-
-- **Reproducibility Guide**: `reproducibility/README.md` - Complete experimental setup and script descriptions
-
-## Reproducing Results
-
-All experimental scripts are in the `reproducibility/` directory:
-
-```bash
-cd reproducibility
-
-# Scalability stress test (Figure 1)
-python bench_scaling.py
-
-# Performance benchmarking (Figure 3)
-python bench_performance.py
-
-# Stability analysis (Figure 2, Appendix A.1)
-python stiffness_experiment.py
-
-# Sensitivity analysis (Figure 4)
-python sensitivity.py
-
-# Mixed precision analysis (Appendix A.2)
-python precision_robustness_experiment.py
-
-# Complexity verification (Appendix A.3)
-python complexity_collapse_experiment.py
-
-# VRAM scaling analysis (Appendix A.4)
-python parameter_gradient_experiment.py
-```
-
-Experimental results (CSV files and plots) are saved to the `result/` directory.
-
-
-
-## Requirements
+## Prerequisites
 
 - Python 3.10+
 - PyTorch 2.1.0+ (requires `torch.func`)
 - NumPy, Pandas, Matplotlib, SciPy, psutil
-- CUDA-capable GPU (tested on NVIDIA RTX 5090/5060)
 
-See `reproducibility/requirements.txt` for exact package versions.
+## Core Scripts & Reproducibility
+
+| Script | Purpose | Paper Reference |
+| :--- | :--- | :--- |
+| `pgf_mamba.py` | Core library implementing the TOSE algorithm. | Methodology |
+| `train_singlemamba.py` | PGF vs Autograd training comparison (single-layer Mamba). Generates Figure 5. | Figure 5 |
+| `bench_scaling.py` | Scalability stress test data collection (RTX 5090). Generates CSV data for Figure 1. | Figure 1 (data only) |
+| - | Numerical stability landscape data. Data source: `result/verify_fidelity.csv`. | Figure 2 (data only) |
+| `bench_performance.py` | Hardware efficiency benchmarking data collection (RTX 5060). Generates CSV data for Figure 3. | Figure 3 (data only) |
+| `sensitivity.py` | Ghost Pulse detection in 128k sequences. | Figure 4 |
+| `run_longtext_experiments.py` | Real-world long-text PGF sensitivity (Wiki/C4-Tech). | Appendix H |
+| `stiffness_experiment.py` | Stability under extreme selective stiffness. | Appendix A |
+| `precision_robustness_experiment.py` | Mixed precision and Length-Invariance analysis. | Appendix B |
+| `complexity_collapse_experiment.py` | Complexity class verification (O(N^4) to O(N)). | Appendix C |
+
+**Note:** 
+- `bench_scaling.py` and `bench_performance.py` generate CSV data files only. The actual figures (Figure 1 and Figure 3) are created by separate visualization scripts or manually from the CSV data.
+- Figure 2 data is stored in `result/verify_fidelity.csv`. The 3D surface plot (Figure 2) is generated separately from this CSV data.
+- Appendix A/B/C figures are rendered to `result/FigA1_StiffnessStability.pdf`, `result/FigA2_PrecisionRobustness.pdf`, and `result/FigA3_ComplexityCollapse.pdf`, respectively.
+- Real-world long-text sensitivity figures are exported directly by `run_longtext_experiments.py` to `result/FigA4_WikiLong.pdf` and `result/FigA5_C4Tech.pdf` .
+
+## Running the Experiments
+
+Experimental results (CSV and Plots) are saved to the `../result/` directory.
+
+```bash
+# Example: Reproduce Stability analysis
+python stiffness_experiment.py
+
+# Example: Reproduce PGF vs Autograd training comparison (Figure 5)
+python train_singlemamba.py
+
+# Example: Reproduce Speed-Memory Pareto Frontier
+python bench_performance.py
+```
 
 ## Hardware Note
-
-Benchmarks were executed on NVIDIA RTX 5090 and RTX 5060 Laptop GPUs. Performance metrics may vary based on hardware specifications and CUDA versions.
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Acknowledgments
-
-This work enables chromosome-scale sensitivity analysis on single-GPU workstations, bridging the gap between theoretical infinite-context models and practical hardware limitations.
-
----
-
+Benchmarks were executed on NVIDIA RTX 5090 and RTX 5060 Laptop GPUs. Metrics may vary based on hardware specifications and CUDA versions.
 
