@@ -10,7 +10,6 @@ from torch.func import jvp
 
 os.makedirs("result", exist_ok=True)
 
-# ICML standard plotting settings
 plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman", "DejaVu Serif"],
@@ -205,4 +204,5 @@ def plot_stiffness_results(df):
 if __name__ == "__main__":
     df_results = run_stiffness_experiment()
     print("\n[COMPLETE] Extreme stiffness experiment finished.")
+
 
